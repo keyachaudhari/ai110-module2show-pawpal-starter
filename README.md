@@ -52,3 +52,18 @@ This project adds a few simple improvements to make the scheduler more helpful a
 - Conflict detection: the scheduler detects overlapping scheduled tasks and can return a short warning message without crashing the program.
 
 These changes are intentionally simple and beginner-friendly so you can read and extend the logic easily.
+
+## Testing PawPal+
+
+- Run the test suite:
+
+  python -m pytest
+
+- What the tests cover (brief):
+  - Task completion behavior
+  - Adding tasks to a pet
+  - Sorting tasks by scheduled time
+  - Recurring tasks (daily recurrence creation)
+  - Conflict detection for overlapping tasks
+
+- Confidence: ★★★☆☆ (3/5) — a small, focused test suite that checks core scheduling behaviors; run the tests locally to see current results.

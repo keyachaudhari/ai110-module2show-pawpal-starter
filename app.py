@@ -96,11 +96,30 @@ if st.button("Generate schedule"):
     owner.attach_scheduler(scheduler)  # ensure owner/scheduler linked
     plan = scheduler.generate_plan(owner)
     if plan:
-        st.success("Schedule generated")
-        for idx, t in enumerate(plan, start=1):
-            # find which pet the task belongs to (by identity)
+        # sort by scheduled time using Scheduler method
+        sorted_plan = scheduler.sort_tasks_by_scheduled_time(plan)
+
+        # build rows for display
+        table_rows = []
+        for idx, t in enumerate(sorted_plan, start=1):
             pet_name = next((p.name for p in owner.pets if t in p.tasks), "Unknown")
-            st.write(f"{idx}. {t.title} ({pet_name}) — {t.duration}m — priority {t.priority}")
+            table_rows.append({
+                "No.": idx,
+                "Scheduled time": t.scheduled_time,
+                "Task": t.title,
+                "Pet": pet_name,
+                "Duration (min)": t.duration,
+                "Priority": t.priority,
+            })
+
+        st.success("Schedule generated")
+        st.table(table_rows)
+
+        # show conflicts if any
+        warning = scheduler.detect_conflicts(sorted_plan, return_message=True)
+        if warning:
+            st.warning(warning)
+
         st.markdown("**Explanation:**")
         st.write(scheduler.explain_plan())
     else:

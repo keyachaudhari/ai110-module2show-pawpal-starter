@@ -19,6 +19,7 @@ def main():
         scheduled_time=datetime.datetime(2026, 1, 1, 9, 0)
     )
 
+
     task2 = Task(
         title="Feed Cat",
         task_type="Feeding",
@@ -32,7 +33,7 @@ def main():
         task_type="Appointment",
         duration=60,
         priority=4,
-        scheduled_time=datetime.datetime(2026, 1, 1, 9, 0) 
+        scheduled_time=datetime.datetime(2026, 1, 1, 9, 0)  # SAME TIME
     )
 
     dog.add_task(task1)

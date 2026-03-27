@@ -42,6 +42,18 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
     
+## Features
+
+A quick overview of what PawPal+ provides:
+
+- Add pets and manage their basic info (name, species, age).
+- Add tasks for each pet with duration and priority, and mark tasks complete.
+- Generate a daily schedule (planner) that fits within the owner's available time.
+- Sort tasks by scheduled time so timed tasks appear earliest and unscheduled tasks appear last.
+- Filter tasks by pet or show only incomplete tasks to focus on what matters.
+- Recurring tasks: support for daily and weekly recurrence so future occurrences are created automatically.
+- Conflict detection: the scheduler detects overlapping tasks and returns a short warning message for the UI.
+
 ## Smarter Scheduling
 
 This project adds a few simple improvements to make the scheduler more helpful and easy to understand:
@@ -66,4 +78,8 @@ These changes are intentionally simple and beginner-friendly so you can read and
   - Recurring tasks (daily recurrence creation)
   - Conflict detection for overlapping tasks
 
-- Confidence: ★★★☆☆ (3/5) — a small, focused test suite that checks core scheduling behaviors; run the tests locally to see current results.
+- Confidence: ★★★★☆ (4/5) — a small, focused test suite that checks core scheduling behaviors; run the tests locally to see current results.
+
+## 📸 Demo
+
+![PawPal+ Screenshot](screenshot.png)

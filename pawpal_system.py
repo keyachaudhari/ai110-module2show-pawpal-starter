@@ -11,12 +11,50 @@ class Task:
     duration: int  # minutes
     priority: int
     scheduled_time: Optional[datetime.datetime] = None
-    recurring: bool = False
+    # frequency can be None, "daily", or "weekly"
+    frequency: Optional[str] = None
+    # back-reference to the Pet that owns this task (set when added to a Pet)
+    pet: Optional["Pet"] = field(default=None, repr=False, compare=False)
     completed: bool = False
 
     def mark_complete(self) -> None:
         """Mark this task as completed."""
+        # avoid double-creating occurrences if already completed
+        if self.completed:
+            return
+
         self.completed = True
+
+        # If this task is recurring (frequency set) and has a scheduled_time,
+        # create a new Task for the next occurrence and attach it to the same pet.
+        if self.frequency and self.scheduled_time and self.pet:
+            if self.frequency == "daily":
+                delta = datetime.timedelta(days=1)
+            elif self.frequency == "weekly":
+                delta = datetime.timedelta(days=7)
+            else:
+                # unknown frequency -- do nothing
+                return
+
+            next_time = self.scheduled_time + delta
+
+            # create a new Task for the next occurrence
+            new_task = Task(
+                title=self.title,
+                task_type=self.task_type,
+                duration=self.duration,
+                priority=self.priority,
+                scheduled_time=next_time,
+                frequency=self.frequency,
+                completed=False,
+            )
+
+            # attach to the same pet using Pet.add_task (this will set new_task.pet)
+            try:
+                self.pet.add_task(new_task)
+            except Exception:
+                # keep this simple and fail silently if adding fails
+                pass
 
     def update_priority(self, priority: int) -> None:
         """Set a new priority for the task."""
@@ -37,12 +75,17 @@ class Pet:
     def add_task(self, task: Task) -> None:
         """Add a task to this pet if it's not already present."""
         if task not in self.tasks:
+            # set back-reference so Task can create next occurrences
+            task.pet = self
             self.tasks.append(task)
 
     def remove_task(self, task: Task) -> None:
         """Remove a task from this pet if present."""
         if task in self.tasks:
             self.tasks.remove(task)
+            # clear back-reference
+            if getattr(task, "pet", None) is self:
+                task.pet = None
 
     def get_tasks(self) -> List[Task]:
         """Return a copy of this pet's tasks."""
@@ -131,14 +174,36 @@ class Scheduler:
         """Sort the scheduler's task list by priority (descending)."""
         self.tasks.sort(key=lambda t: (-t.priority, t.duration))
 
+    def sort_tasks_by_scheduled_time(self, tasks: Optional[List[Task]] = None) -> List[Task]:
+        """Return tasks sorted by scheduled_time, with unscheduled tasks last."""
+        source = tasks if tasks is not None else (self.daily_plan if self.daily_plan else self.tasks)
+        # Use datetime.max for tasks without scheduled_time so they sort to the end
+        return sorted(source, key=lambda t: (t.scheduled_time if t.scheduled_time is not None else datetime.datetime.max))
+
+    def filter_tasks(self, include_completed: bool = False, pet_name: Optional[str] = None, tasks: Optional[List[Task]] = None) -> List[Task]:
+        """Filter tasks by completion status and optional pet name."""
+        # If a pet name is provided, prefer tasks from that pet (requires attached owner)
+        if pet_name:
+            if not self.owner:
+                return []
+            pet = next((p for p in self.owner.pets if p.name == pet_name), None)
+            if not pet:
+                return []
+            source = pet.get_tasks()
+        else:
+            source = tasks if tasks is not None else (self.daily_plan if self.daily_plan else self.tasks)
+
+        # Filter by completion status
+        return [t for t in source if (include_completed or not t.completed)]
+
     def filter_tasks_by_time(self, max_minutes: Optional[int] = None) -> List[Task]:
         """Return tasks that individually fit within the given time limit."""
         if max_minutes is None:
             max_minutes = self.owner.time_available if self.owner is not None else self.time_available
         return [task for task in self.tasks if task.duration <= int(max_minutes)]
 
-    def detect_conflicts(self, tasks: Optional[List[Task]] = None) -> List[Tuple[Task, Task]]:
-        """Detect overlapping scheduled tasks and return pairs that conflict."""
+    def detect_conflicts(self, tasks: Optional[List[Task]] = None, return_message: bool = False):
+        """Detect overlapping scheduled tasks; optionally return a short warning message."""
         consider = tasks if tasks is not None else (self.daily_plan if self.daily_plan else self.tasks)
         scheduled = [task for task in consider if task.scheduled_time is not None]
         conflicts: List[Tuple[Task, Task]] = []
@@ -155,6 +220,18 @@ class Scheduler:
 
                 if start1 < end2 and start2 < end1:
                     conflicts.append((task1, task2))
+
+        # If caller requested a friendly message, return that instead of the raw list
+        if return_message:
+            if conflicts:
+                # build a short sample of conflicts for the message
+                sample = []
+                for a, b in conflicts[:5]:
+                    sample.append(f"'{a.title}' vs '{b.title}'")
+                sample_text = ", ".join(sample)
+                more = "..." if len(conflicts) > 5 else ""
+                return f"Warning: {len(conflicts)} conflict(s) detected: {sample_text}{more}"
+            return ""
 
         return conflicts
 
